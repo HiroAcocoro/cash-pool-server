@@ -1,0 +1,45 @@
+services:
+  cash-pool.db:
+    env_file:
+      - .env
+    image: ${DB_VER}
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASS}
+      - MYSQL_DATABASE=${DB_NAME}
+    volumes:
+      - mysql_db_data:/var/lib/mysql
+    ports:
+      - "${DB_PORT}:3306"
+
+    healthcheck:
+      test: "mysql -uroot -p${DB_PASS} ${DB_NAME} -e 'select 1'"
+      timeout: 20s
+      interval: 10s
+      retries: 5
+
+  cash-pool-server:
+    build:
+      context: ../
+      dockerfile: deployments/Dockerfile
+      args:
+        API_PORT: ${API_PORT}
+    restart: on-failure
+    volumes:
+      - .:/go/src/server
+    env_file:
+      - .env
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    environment:
+      DB_HOST: cash-pool.db
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASS}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: 3306
+    links:
+      - cash-pool.db
+    depends_on:
+      - cash-pool.db
+
+volumes:
+  mysql_db_data:
